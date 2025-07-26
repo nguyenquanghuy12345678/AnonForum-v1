@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnonForum - Diễn đàn ẩn danh</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0c0c0c, #1a1a2e, #16213e);
+            color: #e0e0e0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, #00ff88, #0066cc);
+            border-radius: 50%;
+            opacity: 0.1;
+            animation: pulse 3s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.1; }
+            50% { transform: translateX(-50%) scale(1.2); opacity: 0.3; }
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            font-weight: bold;
+            background: linear-gradient(45deg, #00ff88, #0066cc, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #888;
+            font-size: 1.1rem;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px 20px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .create-post {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #00ff88;
+            font-weight: 600;
+        }
+
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #00ff88, #0066cc);
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 255, 136, 0.3);
+        }
+
+        .posts-container {
+            display: grid;
+            gap: 20px;
+        }
+
+        .post {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .post:hover {
+            transform: translateY(-2px);
+            border-color: #00ff88;
+        }
+
+        .post-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .anon-id {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: bold;
+        }
+
+        .timestamp {
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .post-tags {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+
+        .post-content {
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .post-actions {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            background: none;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #888;
+            padding: 6px 12px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .action-btn:hover {
+            border-color: #00ff88;
+            color: #00ff88;
+        }
+
+        .comments {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .comment {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            border-left: 3px solid #0066cc;
+        }
+
+        .comment-form {
+            margin-top: 15px;
+            display: none;
+        }
+
+        .comment-form.active {
+            display: block;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .filter-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #e0e0e0;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn.active, .filter-btn:hover {
+            background: linear-gradient(45deg, #00ff88, #0066cc);
+            border-color: transparent;
+        }
+
+        .online-count {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 255, 136, 0.2);
+            padding: 10px 15px;
+            border-radius: 20px;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            font-size: 0.9rem;
+        }
+
+        .privacy-notice {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #ffc107;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .logo {
+                font-size: 2rem;
+            }
+            
+            .stats {
+                gap: 15px;
+            }
+            
+            .create-post {
+                padding: 20px;
+            }
+            
+            .online-count {
+                position: static;
+                margin-bottom: 20px;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="online-count">
+        🟢 <span id="onlineCount">247</span> người đang online
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <div class="logo">🕵️ AnonForum</div>
+            <div class="subtitle">Diễn đàn thảo luận ẩn danh - Không ai biết bạn là ai</div>
+            <div class="stats">
+                <div class="stat">📝 <span id="postCount">1,234</span> bài viết</div>
+                <div class="stat">💬 <span id="commentCount">5,678</span> bình luận</div>
+                <div class="stat">🔒 100% ẩn danh</div>
+            </div>
+        </div>
+
+        <div class="privacy-notice">
+            🛡️ <strong>Hoàn toàn ẩn danh:</strong> Không lưu IP, không cần đăng ký, dữ liệu tự xóa sau 7 ngày
+        </div>
+
+        <div class="create-post">
+            <h3 style="margin-bottom: 20px; color: #00ff88;">✍️ Tạo bài viết mới</h3>
+            <form id="postForm">
+                <div class="form-group">
+                    <label>Tiêu đề</label>
+                    <input type="text" id="postTitle" placeholder="Nhập tiêu đề bài viết..." required>
+                </div>
+                <div class="form-group">
+                    <label>Nội dung</label>
+                    <textarea id="postContent" placeholder="Chia sẻ suy nghĩ của bạn..." required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Chủ đề</label>
+                    <select id="postCategory">
+                        <option value="general">🌐 Tổng hợp</option>
+                        <option value="tech">💻 Công nghệ</option>
+                        <option value="crypto">₿ Crypto</option>
+                        <option value="society">👥 Xã hội</option>
+                        <option value="random">🎲 Random</option>
+                        <option value="confession">💭 Tâm sự</option>
+                        <option value="question">❓ Hỏi đáp</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Tags (cách nhau bằng dấu phẩy)</label>
+                    <input type="text" id="postTags" placeholder="ví dụ: tâm sự, cuộc sống, thắc mắc">
+                </div>
+                <button type="submit" class="btn">🚀 Đăng bài</button>
+            </form>
+        </div>
+
+        <div class="filter-bar">
+            <button class="filter-btn active" onclick="filterPosts('all')">Tất cả</button>
+            <button class="filter-btn" onclick="filterPosts('general')">🌐 Tổng hợp</button>
+            <button class="filter-btn" onclick="filterPosts('tech')">💻 Tech</button>
+            <button class="filter-btn" onclick="filterPosts('crypto')">₿ Crypto</button>
+            <button class="filter-btn" onclick="filterPosts('society')">👥 Xã hội</button>
+            <button class="filter-btn" onclick="filterPosts('random')">🎲 Random</button>
+            <button class="filter-btn" onclick="filterPosts('confession')">💭 Tâm sự</button>
+        </div>
+
+        <div class="posts-container" id="postsContainer">
+            <!-- Posts sẽ được tạo động ở đây -->
+        </div>
+    </div>
+
+    <script>
+        // Simulated database - trong thực tế sẽ dùng backend
+        let posts = [];
+        let postIdCounter = 1;
+        
+        // Generate random anonymous ID
+        function generateAnonId() {
+            const prefixes = ['Anon', 'Ghost', 'Shadow', 'Phantom', 'Mystery', 'Unknown'];
+            const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+            const number = Math.floor(Math.random() * 9999) + 1000;
+            return prefix + number;
+        }
+
+        // Encrypt content (simple demo - thực tế cần mạnh hơn)
+        function encryptContent(content) {
+            return CryptoJS.AES.encrypt(content, 'anon-forum-key').toString();
+        }
+
+        function decryptContent(encryptedContent) {
+            try {
+                const bytes = CryptoJS.AES.decrypt(encryptedContent, 'anon-forum-key');
+                return bytes.toString(CryptoJS.enc.Utf8) || encryptedContent;
+            } catch {
+                return encryptedContent;
+            }
+        }
+
+        // Create sample posts
+        function createSamplePosts() {
+            const samplePosts = [
+                {
+                    title: "Crypto có thực sự là tương lai?",
+                    content: "Mình thấy nhiều người nói crypto sẽ thay thế tiền truyền thống, nhưng volatility quá cao. Các bạn nghĩ sao?",
+                    category: "crypto",
+                    tags: ["bitcoin", "ethereum", "future"],
+                    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000)
+                },
+                {
+                    title: "Làm việc remote có thực sự tốt?",
+                    content: "2 năm WFH rồi, thấy thiếu tương tác với đồng nghiệp. Có ai cảm thấy cô đơn không?",
+                    category: "society",
+                    tags: ["remote", "work", "life"],
+                    timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000)
+                },
+                {
+                    title: "AI sẽ thay thế lập trình viên?",
+                    content: "ChatGPT, Claude, Copilot ngày càng mạnh. Liệu 5 năm nữa còn cần dev không?",
+                    category: "tech",
+                    tags: ["ai", "programming", "future"],
+                    timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000)
+                }
+            ];
+
+            samplePosts.forEach(post => {
+                posts.push({
+                    id: postIdCounter++,
+                    anonId: generateAnonId(),
+                    title: post.title,
+                    content: encryptContent(post.content),
+                    category: post.category,
+                    tags: post.tags,
+                    timestamp: post.timestamp,
+                    comments: [],
+                    likes: Math.floor(Math.random() * 50),
+                    expiresAt: new Date(post.timestamp.getTime() + 7 * 24 * 60 * 60 * 1000)
+                });
+            });
+        }
+
+        // Format timestamp
+        function formatTimestamp(date) {
+            const now = new Date();
+            const diff = now - date;
+            const minutes = Math.floor(diff / 60000);
+            const hours = Math.floor(diff / 3600000);
+            const days = Math.floor(diff / 86400000);
+
+            if (minutes < 60) return `${minutes} phút trước`;
+            if (hours < 24) return `${hours} giờ trước`;
+            return `${days} ngày trước`;
+        }
+
+        // Render posts
+        function renderPosts(filteredPosts = posts) {
+            const container = document.getElementById('postsContainer');
+            
+            if (filteredPosts.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #888;">
+                        <h3>🔍 Không có bài viết nào</h3>
+                        <p>Hãy là người đầu tiên chia sẻ ở chủ đề này!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filteredPosts.map(post => `
+                <div class="post" data-category="${post.category}">
+                    <div class="post-header">
+                        <div class="anon-id">👤 ${post.anonId}</div>
+                        <div class="timestamp">${formatTimestamp(post.timestamp)}</div>
+                    </div>
+                    <h3 style="margin-bottom: 10px; color: #fff;">${post.title}</h3>
+                    <div class="post-tags">
+                        ${post.tags.map(tag => `<span class="tag">#${tag}</span>`).join('')}
+                    </div>
+                    <div class="post-content">${decryptContent(post.content)}</div>
+                    <div class="post-actions">
+                        <button class="action-btn" onclick="likePost(${post.id})">
+                            👍 ${post.likes} likes
+                        </button>
+                        <button class="action-btn" onclick="toggleComments(${post.id})">
+                            💬 ${post.comments.length} bình luận
+                        </button>
+                        <button class="action-btn" onclick="sharePost(${post.id})">
+                            🔗 Chia sẻ
+                        </button>
+                        <span style="color: #ff6b6b; font-size: 0.8rem; margin-left: auto;">
+                            🕒 Tự xóa sau ${Math.ceil((post.expiresAt - new Date()) / (24 * 60 * 60 * 1000))} ngày
+                        </span>
+                    </div>
+                    <div class="comments" id="comments-${post.id}" style="display: none;">
+                        ${post.comments.map(comment => `
+                            <div class="comment">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                    <strong style="color: #4ecdc4;">${comment.anonId}</strong>
+                                    <small style="color: #888;">${formatTimestamp(comment.timestamp)}</small>
+                                </div>
+                                <div>${decryptContent(comment.content)}</div>
+                            </div>
+                        `).join('')}
+                        <div class="comment-form" id="comment-form-${post.id}">
+                            <textarea placeholder="Viết bình luận ẩn danh..." id="comment-text-${post.id}" style="margin-bottom: 10px;"></textarea>
+                            <button class="btn" onclick="addComment(${post.id})" style="padding: 8px 16px; font-size: 0.9rem;">
+                                💬 Gửi bình luận
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Filter posts
+        function filterPosts(category) {
+            // Update active filter button
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            const filtered = category === 'all' ? posts : posts.filter(post => post.category === category);
+            renderPosts(filtered);
+        }
+
+        // Like post
+        function likePost(postId) {
+            const post = posts.find(p => p.id === postId);
+            if (post) {
+                post.likes++;
+                renderPosts();
+            }
+        }
+
+        // Toggle comments
+        function toggleComments(postId) {
+            const commentsDiv = document.getElementById(`comments-${postId}`);
+            const commentForm = document.getElementById(`comment-form-${postId}`);
+            
+            if (commentsDiv.style.display === 'none') {
+                commentsDiv.style.display = 'block';
+                commentForm.classList.add('active');
+            } else {
+                commentsDiv.style.display = 'none';
+                commentForm.classList.remove('active');
+            }
+        }
+
+        // Add comment
+        function addComment(postId) {
+            const textArea = document.getElementById(`comment-text-${postId}`);
+            const content = textArea.value.trim();
+            
+            if (!content) return;
+
+            const post = posts.find(p => p.id === postId);
+            if (post) {
+                post.comments.push({
+                    anonId: generateAnonId(),
+                    content: encryptContent(content),
+                    timestamp: new Date()
+                });
+                
+                textArea.value = '';
+                renderPosts();
+                toggleComments(postId); // Show updated comments
+            }
+        }
+
+        // Share post
+        function sharePost(postId) {
+            const post = posts.find(p => p.id === postId);
+            if (post) {
+                if (navigator.share) {
+                    navigator.share({
+                        title: post.title,
+                        text: decryptContent(post.content).substring(0, 100) + '...',
+                        url: window.location.href + '#post-' + postId
+                    });
+                } else {
+                    navigator.clipboard.writeText(window.location.href + '#post-' + postId);
+                    alert('🔗 Link đã được copy vào clipboard!');
+                }
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('postForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const title = document.getElementById('postTitle').value.trim();
+            const content = document.getElementById('postContent').value.trim();
+            const category = document.getElementById('postCategory').value;
+            const tagsInput = document.getElementById('postTags').value.trim();
+            
+            if (!title || !content) return;
+            
+            const tags = tagsInput ? tagsInput.split(',').map(tag => tag.trim()) : [];
+            
+            const newPost = {
+                id: postIdCounter++,
+                anonId: generateAnonId(),
+                title: title,
+                content: encryptContent(content),
+                category: category,
+                tags: tags,
+                timestamp: new Date(),
+                comments: [],
+                likes: 0,
+                expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+            };
+            
+            posts.unshift(newPost);
+            
+            // Clear form
+            document.getElementById('postForm').reset();
+            
+            // Update stats
+            document.getElementById('postCount').textContent = (parseInt(document.getElementById('postCount').textContent.replace(',', '')) + 1).toLocaleString();
+            
+            renderPosts();
+            
+            // Show success message
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+                background: linear-gradient(45deg, #00ff88, #0066cc); color: white;
+                padding: 15px 25px; border-radius: 25px; z-index: 1000;
+                animation: slideDown 0.5s ease;
+            `;
+            notification.innerHTML = '✅ Bài viết đã được đăng thành công!';
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        });
+
+        // Auto-update online count
+        function updateOnlineCount() {
+            const count = 200 + Math.floor(Math.random() * 100);
+            document.getElementById('onlineCount').textContent = count;
+        }
+
+        // Auto-delete expired posts
+        function cleanupExpiredPosts() {
+            const now = new Date();
+            posts = posts.filter(post => post.expiresAt > now);
+            renderPosts();
+        }
+
+        // Initialize
+        createSamplePosts();
+        renderPosts();
+        
+        // Update online count every 30 seconds
+        setInterval(updateOnlineCount, 30000);
+        
+        // Check for expired posts every hour
+        setInterval(cleanupExpiredPosts, 3600000);
+
+        // Add CSS animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideDown {
+                from { transform: translateX(-50%) translateY(-100%); opacity: 0; }
+                to { transform: translateX(-50%) translateY(0); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
